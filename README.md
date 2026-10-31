@@ -4,7 +4,7 @@
 
 纯前端、无后端，皮肤只在浏览器里处理。
 
-- 在线体验（B站 Toy）：https://www.bilibili.com/toy/mc-doll-workshop/
+- 在线体验（B站 Toy）：https://www.bilibili.com/toy/mc-doll-workshop/index.html
 - 仓库：https://github.com/3289201616/mc-doll-workshop
 
 ## 功能
