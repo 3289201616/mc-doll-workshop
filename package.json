@@ -1,0 +1,21 @@
+{
+  "name": "mc-doll-workshop",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MC 皮肤玩偶工坊 — 导入 Minecraft 皮肤，生成 Q 版玩偶并导出 GLB / glTF / FBX / OBJ",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@comfyorg/fbx-exporter-three": "^1.0.2",
+    "fflate": "^0.8.2",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.1",
+    "vite": "^8.3.4"
+  }
+}

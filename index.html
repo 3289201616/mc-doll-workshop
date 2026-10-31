@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f1e7" />
+    <meta
+      name="description"
+      content="导入 Minecraft 皮肤，自动生成 Q 版玩偶模型，实时预览并导出 GLB / glTF / FBX / OBJ。"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f2b26'/%3E%3Crect x='7' y='7' width='18' height='13' fill='%23f2c6a0'/%3E%3Crect x='7' y='7' width='18' height='5' fill='%236b4a3a'/%3E%3Crect x='11' y='14' width='3' height='3' fill='%232f2b26'/%3E%3Crect x='18' y='14' width='3' height='3' fill='%232f2b26'/%3E%3Crect x='10' y='21' width='12' height='5' fill='%23c65d33'/%3E%3C/svg%3E"
+    />
+    <title>MC 玩偶工坊 · 皮肤转眼变玩偶</title>
+    <!-- B站 Toy 官方 SDK：云存档、关注关系、保存相册、容器适配 -->
+    <script src="//s1.hdslb.com/bfs/seed/toy/app/sdk/toy-sdk.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <rect x="2" y="2" width="20" height="20" rx="4" fill="currentColor" opacity="0.12" />
+              <rect x="7" y="6" width="10" height="8" fill="currentColor" opacity="0.85" />
+              <rect x="9" y="9" width="2" height="2" fill="#fffdf9" />
+              <rect x="13" y="9" width="2" height="2" fill="#fffdf9" />
+              <rect x="8" y="15" width="8" height="4" fill="currentColor" opacity="0.5" />
+            </svg>
+          </span>
+          <div class="brand-text">
+            <h1>MC 玩偶工坊</h1>
+            <p>皮肤进 · 玩偶出 · 模型带走</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <span class="env-badge" id="envBadge" hidden></span>
+          <button class="link-btn" id="helpBtn" type="button">说明</button>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="panel">
+          <section class="card">
+            <header class="card-head">
+              <span class="step">1</span>
+              <h2>选皮肤</h2>
+            </header>
+
+            <div class="drop" id="skinDrop" role="button" tabindex="0">
+              <input type="file" id="skinInput" accept="image/png,image/jpeg,image/webp" hidden />
+              <div class="drop-empty" id="dropEmpty">
+                <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                  <path
+                    d="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+                <strong>拖一张皮肤进来</strong>
+                <span>PNG · 64×64 / 64×32 / HD</span>
+              </div>
+              <div class="drop-filled" id="dropFilled" hidden>
+                <img id="skinPreview" alt="皮肤预览" />
+                <div class="drop-info">
+                  <span class="drop-name" id="skinName">skin.png</span>
+                  <span class="drop-meta" id="skinMeta">64 × 64</span>
+                </div>
+                <span class="drop-swap">更换</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label">体型模板</label>
+              <div class="seg" id="bodySeg" role="group">
+                <button type="button" data-body="alex" class="is-active">细胳膊</button>
+                <button type="button" data-body="steve">经典</button>
+                <button type="button" data-body="custom">自定义</button>
+              </div>
+              <p class="field-hint" id="bodyHint">Alex 的胳膊 3 像素宽，配细胳膊皮肤不裁边。</p>
+            </div>
+
+            <button class="ghost-btn" id="geoBtn" type="button">
+              <span>导入自己的 geo.json</span>
+              <input type="file" id="geoInput" accept=".json,application/json" hidden />
+            </button>
+            <p class="field-hint" id="geoHint">默认用《玩偶工坊》同款坐姿骨骼。</p>
+          </section>
+
+          <section class="card">
+            <header class="card-head">
+              <span class="step">2</span>
+              <h2>调外观</h2>
+            </header>
+
+            <div class="field">
+              <label class="field-label">光影</label>
+              <div class="seg" id="matSeg" role="group">
+                <button type="button" data-mat="flat" class="is-active">原版平面</button>
+                <button type="button" data-mat="lit">柔和光照</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label">背景</label>
+              <div class="seg" id="bgSeg" role="group">
+                <button type="button" data-bg="studio" class="is-active">工作室</button>
+                <button type="button" data-bg="white">纯白</button>
+                <button type="button" data-bg="dark">深色</button>
+                <button type="button" data-bg="transparent">透明</button>
+              </div>
+            </div>
+
+            <label class="switch">
+              <input type="checkbox" id="overlayToggle" checked />
+              <span class="switch-track"><span class="switch-dot"></span></span>
+              <span class="switch-text">第二层（帽子 / 外套）</span>
+            </label>
+
+            <label class="switch">
+              <input type="checkbox" id="rotateToggle" checked />
+              <span class="switch-track"><span class="switch-dot"></span></span>
+              <span class="switch-text">自动旋转</span>
+            </label>
+          </section>
+
+          <section class="card">
+            <header class="card-head">
+              <span class="step">3</span>
+              <h2>拿走模型</h2>
+            </header>
+
+            <div class="field">
+              <label class="field-label">格式</label>
+              <div class="seg seg--format" id="formatSeg" role="group">
+                <button type="button" data-format="glb" class="is-active">GLB</button>
+                <button type="button" data-format="gltf">glTF</button>
+                <button type="button" data-format="fbx">FBX</button>
+                <button type="button" data-format="obj">OBJ</button>
+              </div>
+              <p class="field-hint" id="formatHint">单文件，贴图内嵌，拖进任何查看器都能开。</p>
+            </div>
+
+            <button class="primary-btn" id="exportBtn" type="button">
+              <span id="exportLabel">导出 GLB</span>
+            </button>
+            <div class="sub-actions">
+              <button class="ghost-btn" id="shotBtn" type="button">存一张预览图</button>
+              <button class="ghost-btn" id="resetBtn" type="button">重置视角</button>
+            </div>
+            <ul class="file-list" id="fileList" hidden></ul>
+          </section>
+
+          <section class="card card--note">
+            <h2 class="note-title">说明</h2>
+            <ul class="note-list">
+              <li>皮肤只在你的浏览器里处理，不上传任何服务器。</li>
+              <li>导出尺寸和游戏内一致：1 单位 = 1 格，玩偶约 0.88 格高。</li>
+              <li>OBJ 不支持顶点色，原版那种面明暗会丢失，贴图会一起打包。</li>
+              <li>第二层关掉后导出里也不会带，所见即所得。</li>
+            </ul>
+          </section>
+        </aside>
+
+        <section class="viewport bg-studio" id="viewport">
+          <canvas id="stage"></canvas>
+          <div class="hud" id="hud" hidden>
+            <span id="hudTris">—</span>
+            <span class="hud-sep"></span>
+            <span id="hudSize">—</span>
+          </div>
+          <div class="viewport-tip" id="viewportTip">拖动旋转 · 滚轮缩放</div>
+          <div class="empty-state" id="emptyState" hidden>
+            <p>还没有皮肤</p>
+            <span>拖一张 PNG 到左边，玩偶立刻站起来</span>
+          </div>
+        </section>
+      </main>
+
+      <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+      <div class="modal" id="helpModal" hidden>
+        <div class="modal-card">
+          <header>
+            <h2>三步做个玩偶</h2>
+            <button class="icon-btn" data-close type="button" aria-label="关闭">×</button>
+          </header>
+          <div class="modal-body">
+            <p><strong>1 · 皮肤</strong>　拖入 64×64 或 64×32 的皮肤 PNG。尺寸不是这两档会直接提示，不会让你对着一个坏模型猜。</p>
+            <p><strong>2 · 体型</strong>　细胳膊是 Alex（3 像素手臂），经典是 Steve（4 像素）。皮肤手臂被裁了一条边，就是选错了。</p>
+            <p><strong>3 · 导出</strong>　GLB 最省事；要进 Blender / Unity 用 FBX；OBJ 给只认纯几何的老软件。glTF 会打包成 zip，里面是 json + bin + png。</p>
+            <p class="modal-foot">骨骼来自《森罗物语：玩偶工坊》的坐姿几何，也可以导入自己的 geo.json。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
