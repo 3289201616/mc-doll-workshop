@@ -359,8 +359,9 @@ function bindInputs() {
     toast('镜头回正了')
   })
 
-  $('#exportBtn').addEventListener('click', runExport)
-  $('#shotBtn').addEventListener('click', saveSnapshot)
+  $('#exportBtn').addEventListener('click', () => withDownloadTip(runExport))
+  $('#shotBtn').addEventListener('click', () => withDownloadTip(saveSnapshot))
+  bindDownloadTip()
 
   $('#helpBtn').addEventListener('click', () => {
     $('#helpModal').hidden = false
@@ -374,7 +375,9 @@ function bindInputs() {
     if (event.target.id === 'helpModal') $('#helpModal').hidden = true
   })
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') $('#helpModal').hidden = true
+    if (event.key !== 'Escape') return
+    $('#helpModal').hidden = true
+    if (!$('#downloadModal').hidden) closeDownloadTip()
   })
 
   bindDragAndDrop()
@@ -415,6 +418,62 @@ function bindDragAndDrop() {
   function hasFiles(event) {
     return Array.from(event.dataTransfer?.types || []).includes('Files')
   }
+}
+
+/* ── 下载提示 ───────────────────────────────────── */
+
+const DOWNLOAD_TIP_KEY = 'mcdoll_download_tip_off'
+let pendingDownload = null
+
+function tipMuted() {
+  try {
+    return localStorage.getItem(DOWNLOAD_TIP_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function muteDownloadTip() {
+  try {
+    localStorage.setItem(DOWNLOAD_TIP_KEY, '1')
+  } catch {
+    /* 隐私模式下存不了，那就每次都提醒，不算错 */
+  }
+}
+
+/**
+ * B站 App 的内置网页一般不给下载权限，点了没反应、也找不到文件。
+ * 所以第一次保存前提醒一句；用户选了「以后不再提醒」就记住，之后直接下。
+ */
+function withDownloadTip(action) {
+  if (tipMuted()) {
+    action()
+    return
+  }
+  pendingDownload = action
+  $('#downloadModal').hidden = false
+}
+
+function closeDownloadTip({ run = false } = {}) {
+  $('#downloadModal').hidden = true
+  const action = pendingDownload
+  pendingDownload = null
+  if (run && action) action()
+}
+
+function bindDownloadTip() {
+  $('#downloadContinue').addEventListener('click', () => closeDownloadTip({ run: true }))
+  $('#downloadMute').addEventListener('click', () => {
+    muteDownloadTip()
+    closeDownloadTip({ run: true })
+    toast('之后不再提醒，文件会直接下载', 'ok')
+  })
+  $$('[data-close-download]').forEach((button) => {
+    button.addEventListener('click', () => closeDownloadTip())
+  })
+  $('#downloadModal').addEventListener('click', (event) => {
+    if (event.target.id === 'downloadModal') closeDownloadTip()
+  })
 }
 
 /* ── 导出 ───────────────────────────────────────── */

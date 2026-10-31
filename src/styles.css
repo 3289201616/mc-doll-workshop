@@ -771,6 +771,24 @@ button {
   font-weight: 600;
 }
 
+.tip-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.tip-actions .primary-btn {
+  width: 100%;
+  margin-top: 0;
+}
+
+.tip-actions .ghost-btn {
+  flex: none;
+  width: 100%;
+  padding: 10px;
+}
+
 .modal-foot {
   margin-top: 4px;
   padding-top: 12px;

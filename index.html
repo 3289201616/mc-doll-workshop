@@ -197,6 +197,28 @@
           </div>
         </div>
       </div>
+      <div class="modal" id="downloadModal" hidden>
+        <div class="modal-card">
+          <header>
+            <h2>保存前看一眼</h2>
+            <button class="icon-btn" data-close-download type="button" aria-label="关闭">×</button>
+          </header>
+          <div class="modal-body">
+            <p>
+              模型和预览图都是走<strong>浏览器的下载能力</strong>保存的。如果你是在 <strong>B站 App</strong>
+              里打开这个玩具，App 内置网页一般不给下载权限，点了会没反应、也找不到文件。
+            </p>
+            <p>
+              解决办法：点右上角 <strong>···</strong> 菜单，选 <strong>在浏览器中打开</strong>，
+              再回来点导出，文件就会正常存到「下载」目录。
+            </p>
+            <div class="tip-actions">
+              <button class="primary-btn" id="downloadContinue" type="button">知道了，继续保存</button>
+              <button class="ghost-btn" id="downloadMute" type="button">以后不再提醒</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>
