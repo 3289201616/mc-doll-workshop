@@ -10,7 +10,8 @@
  */
 import { execFileSync } from 'node:child_process'
 
-const GH = './tools/bin/gh.exe'
+// gh 可以在别的项目里，用 GH_BIN 指过去
+const GH = process.env.GH_BIN || './tools/bin/gh.exe'
 const REPO = process.argv[2] || '3289201616/mc-doll-workshop'
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim()
