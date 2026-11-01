@@ -520,9 +520,11 @@ async function openSaveSheet() {
     const shareable = canShareFile(file)
     $('#saveToAlbum').hidden = !shareable
     $('#saveHint').classList.remove('is-hot')
+    // 没有系统分享面板时（B站 App 内置网页就是这样），长按是唯一的路，提示得显眼些
+    $('#saveHint').classList.toggle('is-strong', !shareable)
     $('#saveHint').textContent = shareable
       ? '点「保存到相册」走系统面板选「存储图像 / 保存图片」，也可以直接长按上图。'
-      : '长按上面这张图，选「保存图片 / 存储到照片」，就能存进相册。'
+      : '长按上面这张图，选「保存图片 / 存储到照片」。如果长按没反应，点右上角 ··· 选「在浏览器中打开」再来一次。'
     $('#saveModal').hidden = false
   } catch (error) {
     console.error(error)
