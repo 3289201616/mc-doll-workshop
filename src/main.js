@@ -360,11 +360,7 @@ function bindInputs() {
   })
 
   $('#exportBtn').addEventListener('click', () => withDownloadTip(runExport))
-  $('#shotBtn').addEventListener('click', () => {
-    // 手机上浏览器根本不给下载，直接走「长按 / 分享」存相册那条路
-    if (isTouchUI()) openSaveSheet()
-    else withDownloadTip(saveSnapshot)
-  })
+  $('#shotBtn').addEventListener('click', saveSnapshot)
   bindDownloadTip()
   bindSaveSheet()
 
@@ -486,12 +482,36 @@ function bindDownloadTip() {
 
 /**
  * 手机 / 平板：主输入设备是手指。这类环境下 <a download> 基本不生效
- * （B站 App 内置网页、微信、iOS Safari 都拦），所以预览图改走
- * 「系统分享面板」或「长按保存」这条路。
+ * （B站 App 内置网页、微信、iOS Safari 都拦），所以预览图另走两条路。
  */
 function isTouchUI() {
   if (window.matchMedia?.('(pointer: coarse)').matches) return true
   return (navigator.maxTouchPoints || 0) > 0 && window.innerWidth < 900
+}
+
+/**
+ * B站 Toy 容器注入的原生 SDK（window.toy）。
+ * saveImageToAlbum 只在 App 内可用，端外调用会抛 unsupported，
+ * 所以先问 isSupport 再动手，别指望 try/catch 兜住所有情况。
+ */
+const TOY_ALBUM_LIMIT = 5 * 1024 * 1024
+
+async function toySaveToAlbum(dataUrl, name) {
+  const toy = window.toy
+  if (!toy?.saveImageToAlbum) return { ok: false, reason: 'missing' }
+  try {
+    const supported = await toy.isSupport?.('saveImageToAlbum')
+    if (!supported) return { ok: false, reason: 'unsupported' }
+    // 接口按 base64 字符串长度卡 5MB，超了直接 reject，不如先让位给别的路
+    if (dataUrl.length > TOY_ALBUM_LIMIT) return { ok: false, reason: 'too-large' }
+    const result = await toy.saveImageToAlbum({
+      base64Data: dataUrl,
+      hintMsg: `保存「${name}」到相册`,
+    })
+    return { ok: true, path: result?.localPath || '' }
+  } catch (error) {
+    return { ok: false, reason: error?.type || 'error', error }
+  }
 }
 
 let pendingShot = null
@@ -504,27 +524,26 @@ function canShareFile(file) {
   }
 }
 
-async function openSaveSheet() {
-  if (!built) {
-    toast('先拖一张皮肤进来', 'warn')
-    return
-  }
+async function openSaveSheet(dataUrl, name, nativeReason = '') {
   try {
-    const url = stage.capture(1400, state.backdrop)
-    if (!url) throw new Error('截图失败')
-    const blob = await (await fetch(url)).blob()
-    const file = new File([blob], `${baseName()}-preview.png`, { type: 'image/png' })
-    pendingShot = { url, blob, file }
+    const blob = await (await fetch(dataUrl)).blob()
+    const file = new File([blob], name, { type: 'image/png' })
+    pendingShot = { url: dataUrl, blob, file, name }
 
-    $('#saveShotImg').src = url
+    $('#saveShotImg').src = dataUrl
     const shareable = canShareFile(file)
     $('#saveToAlbum').hidden = !shareable
     $('#saveHint').classList.remove('is-hot')
     // 没有系统分享面板时（B站 App 内置网页就是这样），长按是唯一的路，提示得显眼些
     $('#saveHint').classList.toggle('is-strong', !shareable)
-    $('#saveHint').textContent = shareable
-      ? '点「保存到相册」走系统面板选「存储图像 / 保存图片」，也可以直接长按上图。'
-      : '长按上面这张图，选「保存图片 / 存储到照片」。如果长按没反应，点右上角 ··· 选「在浏览器中打开」再来一次。'
+
+    if (nativeReason === 'too-large') {
+      $('#saveHint').textContent = '这张图超过 App 存相册的 5MB 上限，长按上面这张图保存试试。'
+    } else if (shareable) {
+      $('#saveHint').textContent = '点「保存到相册」走系统面板选「存储图像 / 保存图片」，也可以直接长按上图。'
+    } else {
+      $('#saveHint').textContent = '长按上面这张图，选「保存图片 / 存储到照片」。如果长按没反应，点右上角 ··· 选「在浏览器中打开」再来一次。'
+    }
     $('#saveModal').hidden = false
   } catch (error) {
     console.error(error)
@@ -537,24 +556,39 @@ function closeSaveSheet() {
   pendingShot = null
 }
 
+function pulseSaveHint(message) {
+  const hint = $('#saveHint')
+  hint.classList.remove('is-hot')
+  void hint.offsetWidth
+  hint.classList.add('is-hot')
+  toast(message, 'warn', 4200)
+}
+
 async function saveToAlbum() {
   if (!pendingShot) return
+  // App 内第一次没存成（权限、偶发失败），这里再试一次原生接口
+  const native = await toySaveToAlbum(pendingShot.url, pendingShot.name)
+  if (native.ok) {
+    closeSaveSheet()
+    toast('已保存到相册', 'ok')
+    return
+  }
+  if (!canShareFile(pendingShot.file)) {
+    pulseSaveHint('长按图片也能存进相册')
+    return
+  }
   try {
     await navigator.share({ files: [pendingShot.file], title: 'MC 玩偶预览图' })
   } catch (error) {
     // 用户自己取消不算错，其余情况退回长按提示
     if (error?.name === 'AbortError') return
-    const hint = $('#saveHint')
-    hint.classList.remove('is-hot')
-    void hint.offsetWidth
-    hint.classList.add('is-hot')
-    toast('长按图片也能存进相册', 'warn', 4200)
+    pulseSaveHint('长按图片也能存进相册')
   }
 }
 
 function downloadShot() {
   if (!pendingShot) return
-  download(pendingShot.blob, `${baseName()}-preview.png`)
+  download(pendingShot.blob, pendingShot.name)
   toast('已交给浏览器下载', 'ok')
 }
 
@@ -568,6 +602,12 @@ function bindSaveSheet() {
 }
 
 /* ── 导出 ───────────────────────────────────────── */
+
+/** dataURL → Blob → 交给浏览器下载（桌面和端外就是这么存的）。 */
+async function downloadUrl(dataUrl, filename) {
+  const blob = await (await fetch(dataUrl)).blob()
+  download(blob, filename)
+}
 
 function download(blob, filename) {
   const url = URL.createObjectURL(blob)
@@ -652,25 +692,42 @@ async function runExport() {
   }
 }
 
-function saveSnapshot() {
+async function saveSnapshot() {
   if (!built) {
     toast('先拖一张皮肤进来', 'warn')
     return
   }
+
+  let url
   try {
-    const url = stage.capture(1400, state.backdrop)
-    if (!url) throw new Error('截图失败')
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${baseName()}-preview.png`
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    toast('预览图已保存', 'ok')
+    url = stage.capture(1400, state.backdrop)
   } catch (error) {
     console.error(error)
-    toast('截图失败，稍后再试', 'error')
   }
+  if (!url) {
+    toast('截图失败，稍后再试', 'error')
+    return
+  }
+  const name = `${baseName()}-preview.png`
+
+  // 1) B站 App 内：容器给了原生存相册接口，直接写进相册，不用弹任何东西
+  const native = await toySaveToAlbum(url, name)
+  if (native.ok) {
+    toast('已保存到相册', 'ok')
+    return
+  }
+
+  // 2) 触屏：系统分享面板 / 长按保存
+  if (isTouchUI()) {
+    openSaveSheet(url, name, native.reason)
+    return
+  }
+
+  // 3) 桌面与端外：走浏览器下载，第一次仍然提醒一句
+  withDownloadTip(() => {
+    downloadUrl(url, name)
+    toast('预览图已保存', 'ok')
+  })
 }
 
 /* ── 启动 ───────────────────────────────────────── */
