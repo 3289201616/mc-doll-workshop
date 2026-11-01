@@ -62,7 +62,7 @@
                   />
                 </svg>
                 <strong>拖一张皮肤进来</strong>
-                <span>PNG · 64×64 / 64×32 / HD</span>
+                <span id="skinFormatHint">PNG · 64×64 / 64×32 / HD</span>
               </div>
               <div class="drop-filled" id="dropFilled" hidden>
                 <img id="skinPreview" alt="皮肤预览" />
@@ -190,7 +190,7 @@
             <button class="icon-btn" data-close type="button" aria-label="关闭">×</button>
           </header>
           <div class="modal-body">
-            <p><strong>1 · 皮肤</strong>　拖入 64×64 或 64×32 的皮肤 PNG。尺寸不是这两档会直接提示，不会让你对着一个坏模型猜。</p>
+            <p><strong>1 · 皮肤</strong>　拖入 64×64 或 64×32 的皮肤 PNG。尺寸不是这两档会直接提示，不会让你对着一个坏模型猜；用自定义 json 模型时贴图尺寸不限，整张图会按模型声明的 UV 空间铺开。</p>
             <p><strong>2 · 体型</strong>　细胳膊是 Alex（3 像素手臂），经典是 Steve（4 像素）。皮肤手臂被裁了一条边，就是选错了。</p>
             <p><strong>3 · 导出</strong>　GLB 最省事；要进 Blender / Unity 用 FBX；OBJ 给只认纯几何的老软件。glTF 会打包成 zip，里面是 json + bin + png。</p>
             <p class="modal-foot">骨骼来自《森罗物语：玩偶工坊》的坐姿几何，也可以导入自定义 json 模型。</p>

@@ -16,7 +16,7 @@ const STORAGE_KEY = 'mcdoll_settings_v1'
 const BODY_HINT = {
   alex: 'Alex 的胳膊 3 像素宽，配细胳膊皮肤才不会裁边。',
   steve: 'Steve 的胳膊 4 像素宽，老皮肤基本都是这一套。',
-  custom: '正在用你的 json 模型，体型由那份骨骼决定。',
+  custom: '正在用你的 json 模型，体型由那份骨骼决定；贴图尺寸不限。',
 }
 
 const state = {
@@ -109,7 +109,12 @@ function buildMaterials() {
   // 原版观感：面明暗已经烘进顶点色，材质本身不吃光，放到哪个查看器都一致。
   flatMaterial = new THREE.MeshBasicMaterial({ ...shared, vertexColors: true })
   flatMaterial.name = 'doll_skin'
-  const skinSize = { width: state.skin.canvas.width, height: state.skin.canvas.height }
+  const skinSize = {
+    width: state.skin.canvas.width,
+    height: state.skin.canvas.height,
+    // 非标准尺寸的贴图（自定义模型）整张铺满 UV 空间，不做越界裁剪
+    freeform: Boolean(state.skin.freeform),
+  }
   flatMaterial.userData.skinSize = skinSize
 
   // 柔和光照：关掉顶点色，交给场景灯和 PBR，适合打光出图。
@@ -140,16 +145,20 @@ function applySkin(result, { silent = false } = {}) {
   $('#dropFilled').hidden = false
   $('#skinPreview').src = result.canvas.toDataURL('image/png')
   $('#skinName').textContent = result.name
-  $('#skinMeta').textContent = `${result.width} × ${result.height}${result.hd ? ' · HD' : ''}${
-    result.legacy ? ' · 旧版' : ''
-  }`
+  // 自由尺寸的贴图谈不上「HD」——HD 是指 MC 皮肤的 2×/4× 放大版
+  $('#skinMeta').textContent = `${result.width} × ${result.height}${
+    result.hd && !result.freeform ? ' · HD' : ''
+  }${result.legacy ? ' · 旧版' : ''}${result.freeform ? ' · 自由尺寸' : ''}`
   $('#emptyState').hidden = true
 
   rebuildModel()
   if (!silent) {
-    toast(`皮肤接好了，${result.width} × ${result.height}`, 'ok')
+    toast(`贴图接好了，${result.width} × ${result.height}`, 'ok')
     if (result.legacy) {
       window.setTimeout(() => toast('64×32 老皮肤：左臂左腿按官方规则镜像显示，贴图保持原尺寸', 'ok', 4400), 700)
+    }
+    if (result.freeform) {
+      window.setTimeout(() => toast('自定义贴图：整张图铺满模型声明的 UV 空间', 'ok', 4400), 700)
     }
   }
 }
@@ -216,7 +225,8 @@ async function importSkinFile(file) {
     return
   }
   try {
-    const result = await readSkin(file)
+    // 自定义 json 模型声明自己的 UV 空间，贴图尺寸不受 MC 皮肤那套规则约束
+    const result = await readSkin(file, { allowAny: state.geometryName === 'custom' })
     applySkin(result)
   } catch (err) {
     console.error(err)
@@ -272,6 +282,9 @@ function setBody(body, { keepGeometry = false } = {}) {
     button.classList.toggle('is-active', button.dataset.body === body)
   })
   $('#bodyHint').textContent = BODY_HINT[body]
+  // 自定义模型不受 MC 皮肤尺寸约束，提示也跟着换
+  $('#skinFormatHint').textContent =
+    body === 'custom' ? 'PNG · 任意尺寸' : 'PNG · 64×64 / 64×32 / HD'
   saveSettings()
   rebuildModel()
 }

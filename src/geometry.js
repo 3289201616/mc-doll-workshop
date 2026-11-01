@@ -323,17 +323,23 @@ export function buildDollModel({
     legacy: false,
   }
   if (material?.userData?.skinSize) {
-    const { width, height } = material.userData.skinSize
-    const scale = width / parsed.textureWidth
-    ctx.limitWidth = width / scale
-    ctx.limitHeight = height / scale
-    // UV 归一化必须按「实际贴图的网格尺寸」来算。64×32 的老皮肤如果还按
-    // 64×64 归一化，v 会被压缩一半，整块贴图错位。
-    ctx.textureWidth = ctx.limitWidth
-    ctx.textureHeight = ctx.limitHeight
-    ctx.legacy = ctx.limitHeight < parsed.textureHeight - 0.001
-    // 1.8 的布局里，左臂左腿固定画在贴图下四分之一（64 格里的 y ≥ 48）
-    ctx.legacyBand = parsed.textureHeight * 0.75
+    const { width, height, freeform } = material.userData.skinSize
+    if (freeform) {
+      // 自定义模型的贴图可以任意尺寸：整张图铺满模型声明的 UV 空间，
+      // 不判越界、不做老皮肤镜像（MC 皮肤那套规则在这里不成立）。
+      ctx.legacy = false
+    } else {
+      const scale = width / parsed.textureWidth
+      ctx.limitWidth = width / scale
+      ctx.limitHeight = height / scale
+      // UV 归一化必须按「实际贴图的网格尺寸」来算。64×32 的老皮肤如果还按
+      // 64×64 归一化，v 会被压缩一半，整块贴图错位。
+      ctx.textureWidth = ctx.limitWidth
+      ctx.textureHeight = ctx.limitHeight
+      ctx.legacy = ctx.limitHeight < parsed.textureHeight - 0.001
+      // 1.8 的布局里，左臂左腿固定画在贴图下四分之一（64 格里的 y ≥ 48）
+      ctx.legacyBand = parsed.textureHeight * 0.75
+    }
   }
 
   let cubeCount = 0
