@@ -5,7 +5,7 @@ const errs = []
 page.on('pageerror', (e) => errs.push('pageerror: ' + e.message))
 page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()) })
 
-const url = 'http://127.0.0.1:5181/'
+const url = 'http://127.0.0.1:5180/'
 await page.goto(url, { waitUntil: 'networkidle' })
 await page.waitForTimeout(1800)
 

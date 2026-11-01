@@ -242,9 +242,13 @@ export class DollStage {
     const position = this.camera.position.clone()
     const previousBackground = this.scene.background
 
-    this.renderer.setSize(size, size, false)
     this.camera.aspect = 1
     this.camera.updateProjectionMatrix()
+    // setSize 会乘上像素比：高分屏上 1400 会变成 4200，存出来的图又大又糊不准。
+    // 导出按 1:1 出像素，设备无关。
+    const previousPixelRatio = this.renderer.getPixelRatio()
+    this.renderer.setPixelRatio(1)
+    this.renderer.setSize(size, size, false)
 
     const distance = this.fitDistance(1)
     this.camera.position.set(
@@ -270,6 +274,7 @@ export class DollStage {
     this.camera.aspect = aspect
     this.camera.position.copy(position)
     this.camera.updateProjectionMatrix()
+    this.renderer.setPixelRatio(previousPixelRatio)
     this.lastW = 0
     this.lastH = 0
     this.resize()

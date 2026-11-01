@@ -107,6 +107,75 @@ export function parseGeometry(source) {
 }
 
 /**
+ * 64×32 老皮肤的贴图上没有左臂左腿（游戏里是运行时镜像补出来的）。
+ * 以前是把像素拷贝到一张 64×64 的新画布上——那等于改了导入图的尺寸，
+ * 导出时贴图也跟着变大。现在改成在 UV 层做同样的镜像：
+ * 左肢每个面采样时，去右肢区域取镜像后的坐标，贴图原样不动。
+ *
+ *   左臂 (32,48) ← 右臂 (40,16)：水平翻转后整体移动
+ *   左腿 (16,48) ← 右腿 (0,16)
+ *
+ * 两个候选靠「映射后是否落在贴图范围内」自动区分，不依赖骨骼名字。
+ */
+const LEGACY_LIMB_MIRRORS = [
+  { u: (x) => 88 - x, shiftV: -32 }, // 臂：镜像轴在右臂区块上
+  { u: (x) => 32 - x, shiftV: -32 }, // 腿：镜像轴在右腿区块上
+]
+
+/**
+ * 把越界的方块（老皮肤的左肢）映射到右肢区域。映射后仍然越界就原样返回，
+ * 交给调用方按「贴图越界」隐藏。
+ */
+function mirrorLegacyCube(cube, ctx) {
+  if (!ctx.legacy || !cube.uv) return cube
+  // 老皮肤根本没有第二层，外扩出来的那圈不该被镜像到第一层的贴图上
+  if (num(cube.inflate, 0) !== 0) return cube
+  if (!isCubeOutsideSkin(cube, ctx)) return cube
+  // 左肢的 UV 都在贴图下四分之一（64 格里的 y ≥ 48），别把越界的第二层也拉进来
+  let minV = Infinity
+  for (const faceName of FACE_ORDER) {
+    const face = cube.uv[faceName]
+    if (!face) continue
+    const v0 = num(face.uv?.[1], 0)
+    minV = Math.min(minV, v0, v0 + num(face.uv_size?.[1], 0))
+  }
+  if (!(minV >= ctx.legacyBand)) return cube
+
+  for (const mirror of LEGACY_LIMB_MIRRORS) {
+    const uv = {}
+    let fits = true
+
+    for (const faceName of FACE_ORDER) {
+      const face = cube.uv[faceName]
+      if (!face) continue
+      const [u0, v0] = face.uv || [0, 0]
+      const [sw, sh] = face.uv_size || [0, 0]
+
+      const uA = mirror.u(num(u0))
+      const uB = mirror.u(num(u0) + num(sw))
+      const vA = num(v0) + mirror.shiftV
+      const vB = num(v0) + num(sh) + mirror.shiftV
+
+      const uMin = Math.min(uA, uB)
+      const uMax = Math.max(uA, uB)
+      const vMin = Math.min(vA, vB)
+      const vMax = Math.max(vA, vB)
+      if (uMin < -0.001 || vMin < -0.001 || uMax > ctx.limitWidth + 0.001 || vMax > ctx.limitHeight + 0.001) {
+        fits = false
+        break
+      }
+
+      // 端点整体镜像后，uv_size 的正负自然跟着翻，采样方向也就反过来了。
+      uv[faceName] = { ...face, uv: [uA, vA], uv_size: [uB - uA, vB - vA] }
+    }
+
+    if (fits && Object.keys(uv).length) return { ...cube, uv }
+  }
+
+  return cube
+}
+
+/**
  * 旋转贴图采样坐标（uv_rotation）。绕面片中心转，等价于把整块贴图转过去。
  * 负的 uv_size 已经在 u0 + a*sw 里体现，所以这里只处理 0/1 归一化后的旋转。
  */
@@ -251,12 +320,20 @@ export function buildDollModel({
     textureHeight: parsed.textureHeight,
     limitWidth: parsed.textureWidth,
     limitHeight: parsed.textureHeight,
+    legacy: false,
   }
   if (material?.userData?.skinSize) {
     const { width, height } = material.userData.skinSize
     const scale = width / parsed.textureWidth
     ctx.limitWidth = width / scale
     ctx.limitHeight = height / scale
+    // UV 归一化必须按「实际贴图的网格尺寸」来算。64×32 的老皮肤如果还按
+    // 64×64 归一化，v 会被压缩一半，整块贴图错位。
+    ctx.textureWidth = ctx.limitWidth
+    ctx.textureHeight = ctx.limitHeight
+    ctx.legacy = ctx.limitHeight < parsed.textureHeight - 0.001
+    // 1.8 的布局里，左臂左腿固定画在贴图下四分之一（64 格里的 y ≥ 48）
+    ctx.legacyBand = parsed.textureHeight * 0.75
   }
 
   let cubeCount = 0
@@ -275,7 +352,9 @@ export function buildDollModel({
     }
     root.add(boneGroup)
 
-    for (const cube of bone.cubes || []) {
+    for (const rawCube of bone.cubes || []) {
+      // 老皮肤的左肢：先在 UV 层映射到右肢区域，再判断是否越界。
+      const cube = mirrorLegacyCube(rawCube, ctx)
       if (isCubeOutsideSkin(cube, ctx)) {
         hiddenCount += 1
         continue

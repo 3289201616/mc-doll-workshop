@@ -39,34 +39,11 @@ export function describeSkin(width, height) {
   }
 }
 
-/**
- * 64×32 的老皮肤只画了右臂右腿，左半边是游戏运行时按镜像补的。
- * 这里照官方 1.8 转换规则把左臂左腿补出来，否则模型会缺胳膊少腿。
- *
- * 右腿 (0,16) → 左腿 (16,48)，右臂 (40,16) → 左臂 (32,48)，都做水平镜像。
+/*
+ * 64×32 老皮肤缺左臂左腿的贴图区域，游戏里是按镜像补的。
+ * 这里不再往画布上补像素（那会把 64×32 撑成 64×64，等于改了导入图的尺寸），
+ * 改由 geometry.js 在 UV 层把左肢映射到右肢区域翻转采样，贴图保持原样。
  */
-export function upgradeLegacySkin(canvas, width, height) {
-  const scale = width / 64
-  const block = 16 * scale
-  const out = document.createElement('canvas')
-  out.width = width
-  out.height = width
-  const ctx = out.getContext('2d')
-  ctx.imageSmoothingEnabled = false
-  ctx.drawImage(canvas, 0, 0)
-
-  const mirror = (srcX, srcY, destX, destY) => {
-    ctx.save()
-    ctx.translate(destX + block, destY)
-    ctx.scale(-1, 1)
-    ctx.drawImage(canvas, srcX, srcY, block, block, 0, 0, block, block)
-    ctx.restore()
-  }
-
-  mirror(0, 16 * scale, 16 * scale, 48 * scale)
-  mirror(40 * scale, 16 * scale, 32 * scale, 48 * scale)
-  return out
-}
 
 function loadImageElement(file) {
   return new Promise((resolve, reject) => {
@@ -107,11 +84,9 @@ export async function readSkin(file) {
   ctx.drawImage(image, 0, 0)
 
   const info = describeSkin(width, height)
-  // 老皮肤升级成 64×64 的完整版，后面的 UV 逻辑就不用再为它写特例。
-  const resolved = info.legacy ? upgradeLegacySkin(canvas, width, height) : canvas
 
   return {
-    canvas: resolved,
+    canvas,
     source: canvas,
     width,
     height,

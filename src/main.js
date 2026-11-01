@@ -16,7 +16,7 @@ const STORAGE_KEY = 'mcdoll_settings_v1'
 const BODY_HINT = {
   alex: 'Alex 的胳膊 3 像素宽，配细胳膊皮肤才不会裁边。',
   steve: 'Steve 的胳膊 4 像素宽，老皮肤基本都是这一套。',
-  custom: '正在用你导入的 geo.json，体型由那份骨骼决定。',
+  custom: '正在用你的 json 模型，体型由那份骨骼决定。',
 }
 
 const state = {
@@ -149,7 +149,7 @@ function applySkin(result, { silent = false } = {}) {
   if (!silent) {
     toast(`皮肤接好了，${result.width} × ${result.height}`, 'ok')
     if (result.legacy) {
-      window.setTimeout(() => toast('64×32 老皮肤：左臂左腿已按官方规则镜像补全', 'ok', 4200), 700)
+      window.setTimeout(() => toast('64×32 老皮肤：左臂左腿按官方规则镜像显示，贴图保持原尺寸', 'ok', 4400), 700)
     }
   }
 }
@@ -360,8 +360,13 @@ function bindInputs() {
   })
 
   $('#exportBtn').addEventListener('click', () => withDownloadTip(runExport))
-  $('#shotBtn').addEventListener('click', () => withDownloadTip(saveSnapshot))
+  $('#shotBtn').addEventListener('click', () => {
+    // 手机上浏览器根本不给下载，直接走「长按 / 分享」存相册那条路
+    if (isTouchUI()) openSaveSheet()
+    else withDownloadTip(saveSnapshot)
+  })
   bindDownloadTip()
+  bindSaveSheet()
 
   $('#helpBtn').addEventListener('click', () => {
     $('#helpModal').hidden = false
@@ -378,6 +383,7 @@ function bindInputs() {
     if (event.key !== 'Escape') return
     $('#helpModal').hidden = true
     if (!$('#downloadModal').hidden) closeDownloadTip()
+    if (!$('#saveModal').hidden) closeSaveSheet()
   })
 
   bindDragAndDrop()
@@ -473,6 +479,89 @@ function bindDownloadTip() {
   })
   $('#downloadModal').addEventListener('click', (event) => {
     if (event.target.id === 'downloadModal') closeDownloadTip()
+  })
+}
+
+/* ── 移动端存图 ─────────────────────────────────── */
+
+/**
+ * 手机 / 平板：主输入设备是手指。这类环境下 <a download> 基本不生效
+ * （B站 App 内置网页、微信、iOS Safari 都拦），所以预览图改走
+ * 「系统分享面板」或「长按保存」这条路。
+ */
+function isTouchUI() {
+  if (window.matchMedia?.('(pointer: coarse)').matches) return true
+  return (navigator.maxTouchPoints || 0) > 0 && window.innerWidth < 900
+}
+
+let pendingShot = null
+
+function canShareFile(file) {
+  try {
+    return Boolean(navigator.canShare?.({ files: [file] }))
+  } catch {
+    return false
+  }
+}
+
+async function openSaveSheet() {
+  if (!built) {
+    toast('先拖一张皮肤进来', 'warn')
+    return
+  }
+  try {
+    const url = stage.capture(1400, state.backdrop)
+    if (!url) throw new Error('截图失败')
+    const blob = await (await fetch(url)).blob()
+    const file = new File([blob], `${baseName()}-preview.png`, { type: 'image/png' })
+    pendingShot = { url, blob, file }
+
+    $('#saveShotImg').src = url
+    const shareable = canShareFile(file)
+    $('#saveToAlbum').hidden = !shareable
+    $('#saveHint').classList.remove('is-hot')
+    $('#saveHint').textContent = shareable
+      ? '点「保存到相册」走系统面板选「存储图像 / 保存图片」，也可以直接长按上图。'
+      : '长按上面这张图，选「保存图片 / 存储到照片」，就能存进相册。'
+    $('#saveModal').hidden = false
+  } catch (error) {
+    console.error(error)
+    toast('截图失败，稍后再试', 'error')
+  }
+}
+
+function closeSaveSheet() {
+  $('#saveModal').hidden = true
+  pendingShot = null
+}
+
+async function saveToAlbum() {
+  if (!pendingShot) return
+  try {
+    await navigator.share({ files: [pendingShot.file], title: 'MC 玩偶预览图' })
+  } catch (error) {
+    // 用户自己取消不算错，其余情况退回长按提示
+    if (error?.name === 'AbortError') return
+    const hint = $('#saveHint')
+    hint.classList.remove('is-hot')
+    void hint.offsetWidth
+    hint.classList.add('is-hot')
+    toast('长按图片也能存进相册', 'warn', 4200)
+  }
+}
+
+function downloadShot() {
+  if (!pendingShot) return
+  download(pendingShot.blob, `${baseName()}-preview.png`)
+  toast('已交给浏览器下载', 'ok')
+}
+
+function bindSaveSheet() {
+  $('#saveToAlbum').addEventListener('click', saveToAlbum)
+  $('#saveAsDownload').addEventListener('click', downloadShot)
+  $$('[data-close-save]').forEach((button) => button.addEventListener('click', closeSaveSheet))
+  $('#saveModal').addEventListener('click', (event) => {
+    if (event.target.id === 'saveModal') closeSaveSheet()
   })
 }
 

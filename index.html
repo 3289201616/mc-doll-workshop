@@ -85,10 +85,10 @@
             </div>
 
             <button class="ghost-btn" id="geoBtn" type="button">
-              <span>导入自己的 geo.json</span>
+              <span>自定义 json 模型</span>
               <input type="file" id="geoInput" accept=".json,application/json" hidden />
             </button>
-            <p class="field-hint" id="geoHint">默认用《玩偶工坊》同款坐姿骨骼。</p>
+            <p class="field-hint" id="geoHint">默认用《玩偶工坊》同款坐姿骨骼；也可以导入自己的 json 模型。</p>
           </section>
 
           <section class="card">
@@ -193,7 +193,7 @@
             <p><strong>1 · 皮肤</strong>　拖入 64×64 或 64×32 的皮肤 PNG。尺寸不是这两档会直接提示，不会让你对着一个坏模型猜。</p>
             <p><strong>2 · 体型</strong>　细胳膊是 Alex（3 像素手臂），经典是 Steve（4 像素）。皮肤手臂被裁了一条边，就是选错了。</p>
             <p><strong>3 · 导出</strong>　GLB 最省事；要进 Blender / Unity 用 FBX；OBJ 给只认纯几何的老软件。glTF 会打包成 zip，里面是 json + bin + png。</p>
-            <p class="modal-foot">骨骼来自《森罗物语：玩偶工坊》的坐姿几何，也可以导入自己的 geo.json。</p>
+            <p class="modal-foot">骨骼来自《森罗物语：玩偶工坊》的坐姿几何，也可以导入自定义 json 模型。</p>
           </div>
         </div>
       </div>
@@ -215,6 +215,26 @@
             <div class="tip-actions">
               <button class="primary-btn" id="downloadContinue" type="button">知道了，继续保存</button>
               <button class="ghost-btn" id="downloadMute" type="button">以后不再提醒</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" id="saveModal" hidden>
+        <div class="modal-card modal-card--save">
+          <header>
+            <h2>保存预览图</h2>
+            <button class="icon-btn" data-close-save type="button" aria-label="关闭">×</button>
+          </header>
+          <div class="modal-body">
+            <div class="save-shot">
+              <img id="saveShotImg" alt="生成的预览图" />
+            </div>
+            <p class="save-hint" id="saveHint">长按上面这张图，选「保存图片 / 存储到照片」，就能存进相册。</p>
+            <div class="tip-actions">
+              <button class="primary-btn" id="saveToAlbum" type="button">保存到相册</button>
+              <button class="ghost-btn" id="saveAsDownload" type="button">还是用浏览器下载</button>
+              <button class="ghost-btn" data-close-save type="button">关闭</button>
             </div>
           </div>
         </div>
