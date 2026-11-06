@@ -26,7 +26,7 @@ const state = {
   geometry: alexGeo,
   geometryName: 'alex',
   overlay: true,
-  autoRotate: false,
+  autoRotate: true,
   material: 'flat',
   backdrop: 'studio',
   format: 'glb',
@@ -50,10 +50,7 @@ function loadSettings() {
       state.backdrop = saved.backdrop
     }
     if (typeof saved.overlay === 'boolean') state.overlay = saved.overlay
-    // 老版本默认开着自转，转起来后对上来的是侧面甚至后脑；这里一次性改回不自转，
-    // 之后用户在界面里自己打开的话还是会记住。
-    if (!saved.spinTuned) state.autoRotate = false
-    else if (typeof saved.autoRotate === 'boolean') state.autoRotate = saved.autoRotate
+    if (typeof saved.autoRotate === 'boolean') state.autoRotate = saved.autoRotate
     if (FORMATS.some((item) => item.id === saved.format)) state.format = saved.format
   } catch {
     /* 隐私模式下 localStorage 可能不可用，用默认值就行 */
@@ -72,7 +69,6 @@ function saveSettings() {
         backdrop: state.backdrop,
         overlay: state.overlay,
         autoRotate: state.autoRotate,
-        spinTuned: true,
         format: state.format,
       }),
     )
@@ -192,9 +188,6 @@ function rebuildModel() {
   }
 
   built.setOverlayVisible(state.overlay)
-  // 模型正脸朝 +Z，而这个舞台的相机在 -Z 那一侧，转半圈才是迎面。
-  // 用旋转而不是镜像：转完左右手脚仍然是对的。
-  built.root.rotation.y = Math.PI
   stage.setModel(built)
   updateHud()
 }
