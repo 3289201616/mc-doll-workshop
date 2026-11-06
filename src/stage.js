@@ -7,7 +7,8 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
-const START_YAW = -0.5
+// 起始角度：略微偏一点，看得出立体感，但脸必须是正对观众的
+const START_YAW = -0.22
 
 const BACKDROP = {
   studio: ['#fbf7f0', '#e8ddcb'],
@@ -60,7 +61,9 @@ export class DollStage {
     this.canvas = canvas
     this.viewport = viewport
     this.running = false
-    this.autoRotate = true
+    // 默认不自己转：转起来之后模型会一直转，用户对上来的往往是侧面甚至后脑，
+    // 看着像「模型反了」。要转是拖动的事。
+    this.autoRotate = false
     this.spin = 0
 
     this.renderer = new THREE.WebGLRenderer({

@@ -1,0 +1,16 @@
+import { chromium } from 'playwright-core'
+import { readFileSync } from 'node:fs'
+const browser = await chromium.launch({ channel: 'msedge' })
+const page = await browser.newPage({ viewport: { width: 800, height: 800 } })
+await page.goto('http://127.0.0.1:4173/', { waitUntil: 'networkidle' })
+await page.waitForTimeout(1500)
+await page.setInputFiles('#skinInput', { name: 'alice.png', mimeType: 'image/png', buffer: readFileSync('public/samples/alice.png') })
+await page.waitForTimeout(3000)
+const a = await page.evaluate(() => +window.__MCDOLL__.stage.modelGroup.rotation.y.toFixed(3))
+await page.waitForTimeout(2000)
+const b = await page.evaluate(() => +window.__MCDOLL__.stage.modelGroup.rotation.y.toFixed(3))
+console.log('3秒后角度', a, '再等2秒', b, b === a ? '(静止 ✓)' : '(仍在转 ✗)')
+await page.evaluate(() => { const s = window.__MCDOLL__.stage; const t = s.controls.target; s.camera.position.set(t.x, t.y + s.radius * 0.16, t.z - s.radius * 2.6); s.camera.lookAt(t); s.controls.update() })
+await page.waitForTimeout(400)
+await page.locator('#viewport').screenshot({ path: 'preview/still.png' })
+await browser.close()

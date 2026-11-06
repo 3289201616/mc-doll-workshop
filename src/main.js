@@ -26,7 +26,7 @@ const state = {
   geometry: alexGeo,
   geometryName: 'alex',
   overlay: true,
-  autoRotate: true,
+  autoRotate: false,
   material: 'flat',
   backdrop: 'studio',
   format: 'glb',
@@ -50,7 +50,10 @@ function loadSettings() {
       state.backdrop = saved.backdrop
     }
     if (typeof saved.overlay === 'boolean') state.overlay = saved.overlay
-    if (typeof saved.autoRotate === 'boolean') state.autoRotate = saved.autoRotate
+    // 老版本默认开着自转，转起来后对上来的是侧面甚至后脑；这里一次性改回不自转，
+    // 之后用户在界面里自己打开的话还是会记住。
+    if (!saved.spinTuned) state.autoRotate = false
+    else if (typeof saved.autoRotate === 'boolean') state.autoRotate = saved.autoRotate
     if (FORMATS.some((item) => item.id === saved.format)) state.format = saved.format
   } catch {
     /* 隐私模式下 localStorage 可能不可用，用默认值就行 */
@@ -69,6 +72,7 @@ function saveSettings() {
         backdrop: state.backdrop,
         overlay: state.overlay,
         autoRotate: state.autoRotate,
+        spinTuned: true,
         format: state.format,
       }),
     )
