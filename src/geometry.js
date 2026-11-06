@@ -13,19 +13,26 @@
 
 import * as THREE from 'three'
 
-/** 每个面 4 个角的顺序固定为：左上、右上、右下、左下。 */
+/**
+ * 每个面 4 个角的顺序固定为：左上、右上、右下、左下（都是「从外面看这张脸」）。
+ *
+ * north（画着脸的那一面）是 +Z 而不是 -Z —— 这一点用 skinview3d 对过：
+ * 同一个皮肤它在 +Z 方向看到脸，且右腿贴图落在观众左手边。
+ * 之前把 north 摆在 -Z，模型整体等于沿 Z 翻了一面，
+ * 结果脸是正的、左右手脚却镜像反了。
+ */
 const faceCorners = {
   north: (a) => [
-    [a.x1, a.y1, a.z0],
-    [a.x0, a.y1, a.z0],
-    [a.x0, a.y0, a.z0],
-    [a.x1, a.y0, a.z0],
-  ],
-  south: (a) => [
     [a.x0, a.y1, a.z1],
     [a.x1, a.y1, a.z1],
     [a.x1, a.y0, a.z1],
     [a.x0, a.y0, a.z1],
+  ],
+  south: (a) => [
+    [a.x1, a.y1, a.z0],
+    [a.x0, a.y1, a.z0],
+    [a.x0, a.y0, a.z0],
+    [a.x1, a.y0, a.z0],
   ],
   east: (a) => [
     [a.x1, a.y1, a.z1],
@@ -56,8 +63,8 @@ const faceCorners = {
 const FACE_ORDER = ['north', 'south', 'east', 'west', 'up', 'down']
 
 const FACE_NORMALS = {
-  north: [0, 0, -1],
-  south: [0, 0, 1],
+  north: [0, 0, 1],
+  south: [0, 0, -1],
   east: [1, 0, 0],
   west: [-1, 0, 0],
   up: [0, 1, 0],

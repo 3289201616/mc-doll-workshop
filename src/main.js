@@ -188,6 +188,9 @@ function rebuildModel() {
   }
 
   built.setOverlayVisible(state.overlay)
+  // 模型正脸朝 +Z，而这个舞台的相机在 -Z 那一侧，转半圈才是迎面。
+  // 用旋转而不是镜像：转完左右手脚仍然是对的。
+  built.root.rotation.y = Math.PI
   stage.setModel(built)
   updateHud()
 }
