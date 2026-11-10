@@ -179,6 +179,9 @@ function rebuildModel() {
       material: activeMaterial(),
       unit: 1 / 16,
       rotationMode: new URLSearchParams(location.search).get('rot') || 'flip',
+      // 内置 steve/alex 的四肢相对头身是镜像摆的，要换回左右 UV；
+      // 自定义 json 模型不知道是怎么搭的，保持原样。
+      swapLimbs: state.geometryName !== 'custom',
       onWarning: (message) => toast(message, 'warn', 4200),
     })
   } catch (error) {

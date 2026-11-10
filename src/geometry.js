@@ -176,6 +176,74 @@ function mirrorLegacyCube(cube, ctx) {
 }
 
 /**
+ * 左右肢贴图对调。
+ *
+ * 内置的 steve / alex 几何是「正面朝 -Z」搭的：north 是画脸那面，头部的 east(+X)
+ * 采样的也是皮肤里「角色右侧」那块，所以模型空间里 +X 就是角色的右边。
+ * 但四肢的方块却摆在 X 的反侧（RightArm 在 -X），等于四肢相对头身左右镜像了。
+ * 摆到 -Z 侧的相机前面一看，观众左手边显示的就是「左臂」贴图。
+ *
+ * 四肢方块本身左右对称（尺寸、贴图块大小都一致），所以把左右的 UV 成对换回来即可，
+ * 头和身体不动。
+ *
+ * 这是这份几何自身的问题，不是 Bedrock 的通用规则，所以只在 swapLimbs 打开时执行：
+ * 用户导入的自定义 json 模型可能是自洽的，无脑换会把它们弄反。
+ */
+const LIMB_PAIRS = [
+  ['LeftArm', 'RightArm'],
+  ['LeftLeg', 'RightLeg'],
+]
+
+/**
+ * 拷一份 bones 出来再改。
+ *
+ * geometry 通常是模块级 import 的 JSON，parseGeometry 只是把里面那份 bones 原样返回，
+ * 直接在它上面改 uv 会让「每重建一次就再翻一次」，切体型或换皮肤时左右手脚会来回颠倒。
+ */
+function cloneBonesForSwap(parsed) {
+  const cloneFace = (face) => ({
+    ...face,
+    uv: Array.isArray(face.uv) ? [...face.uv] : face.uv,
+    uv_size: Array.isArray(face.uv_size) ? [...face.uv_size] : face.uv_size,
+  })
+  const cloneUv = (uv) => {
+    if (!uv) return uv
+    const out = {}
+    for (const [faceName, face] of Object.entries(uv)) {
+      out[faceName] = face && typeof face === 'object' ? cloneFace(face) : face
+    }
+    return out
+  }
+  return {
+    ...parsed,
+    bones: parsed.bones.map((bone) => ({
+      ...bone,
+      cubes: Array.isArray(bone.cubes)
+        ? bone.cubes.map((cube) => ({ ...cube, uv: cloneUv(cube.uv) }))
+        : bone.cubes,
+    })),
+  }
+}
+
+function swapLimbUv(parsed) {
+  const bones = new Map(parsed.bones.map((bone) => [bone.name, bone]))
+  for (const [leftName, rightName] of LIMB_PAIRS) {
+    const left = bones.get(leftName)
+    const right = bones.get(rightName)
+    if (!left?.cubes || !right?.cubes) continue
+    const count = Math.min(left.cubes.length, right.cubes.length)
+    for (let i = 0; i < count; i += 1) {
+      const a = left.cubes[i]
+      const b = right.cubes[i]
+      if (!a.uv || !b.uv) continue
+      const temp = a.uv
+      a.uv = b.uv
+      b.uv = temp
+    }
+  }
+}
+
+/**
  * 旋转贴图采样坐标（uv_rotation）。绕面片中心转，等价于把整块贴图转过去。
  * 负的 uv_size 已经在 u0 + a*sw 里体现，所以这里只处理 0/1 归一化后的旋转。
  */
@@ -308,9 +376,15 @@ export function buildDollModel({
   material,
   unit = 1 / 16,
   rotationMode = 'cube',
+  swapLimbs = false,
   onWarning,
 }) {
-  const parsed = parseGeometry(geometry)
+  let parsed = parseGeometry(geometry)
+  if (swapLimbs) {
+    // 先拷再换，别改到共享的 bones（否则每次重建都会再翻一次）
+    parsed = cloneBonesForSwap(parsed)
+    swapLimbUv(parsed)
+  }
   const root = new THREE.Group()
   root.name = 'MCDoll'
 
